@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "defaultCategory": "hide",
+  "categories": {
+    "motion": {
+      "show": true,
+      "onlyBlocks": ["motion_movesteps", "motion_turnright", "motion_turnleft", "motion_gotoxy"]
+    },
+    "events": {
+      "show": true,
+      "onlyBlocks": ["event_whenflagclicked"]
+    }
+  }
+}

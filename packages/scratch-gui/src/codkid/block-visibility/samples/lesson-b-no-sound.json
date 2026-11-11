@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "defaultCategory": "show",
+  "allowExtensionLibrary": false,
+  "categories": {
+    "sound": { "show": false }
+  }
+}

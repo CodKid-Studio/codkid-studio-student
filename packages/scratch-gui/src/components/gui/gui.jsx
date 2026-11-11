@@ -28,6 +28,8 @@ import TipsLibrary from '../../containers/tips-library.jsx';
 import Cards from '../../containers/cards.jsx';
 import Alerts from '../../containers/alerts.jsx';
 import DragLayer from '../../containers/drag-layer.jsx';
+// CodKid: per-lesson block visibility can hide the "Add Extension" button
+import CodkidExtensionButtonGate from '../../codkid/block-visibility/extension-button-gate.jsx';
 import ConnectionModal from '../../containers/connection-modal.jsx';
 import TelemetryModal from '../telemetry-modal/telemetry-modal.jsx';
 
@@ -359,19 +361,22 @@ const GUIComponent = props => {
                                             vm={vm}
                                         />
                                     </Box>
-                                    <Box className={styles.extensionButtonContainer}>
-                                        <button
-                                            className={styles.extensionButton}
-                                            title={intl.formatMessage(messages.addExtension)}
-                                            onClick={onExtensionButtonClick}
-                                        >
-                                            <img
-                                                className={styles.extensionButtonIcon}
-                                                draggable={false}
-                                                src={addExtensionIcon}
-                                            />
-                                        </button>
-                                    </Box>
+                                    {/* CodKid: hide the button when the lesson allows no extensions */}
+                                    <CodkidExtensionButtonGate>
+                                        <Box className={styles.extensionButtonContainer}>
+                                            <button
+                                                className={styles.extensionButton}
+                                                title={intl.formatMessage(messages.addExtension)}
+                                                onClick={onExtensionButtonClick}
+                                            >
+                                                <img
+                                                    className={styles.extensionButtonIcon}
+                                                    draggable={false}
+                                                    src={addExtensionIcon}
+                                                />
+                                            </button>
+                                        </Box>
+                                    </CodkidExtensionButtonGate>
                                     <Box className={styles.watermark}>
                                         <Watermark />
                                     </Box>

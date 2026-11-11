@@ -5,6 +5,7 @@ import VM from '@scratch/scratch-vm';
 import {defineMessages, injectIntl, intlShape} from 'react-intl';
 
 import extensionLibraryContent from '../lib/libraries/extensions/index.jsx';
+import {filterExtensionLibrary} from '../codkid/block-visibility/extension-library'; // CodKid: block visibility
 
 import LibraryComponent from '../components/library/library.jsx';
 import extensionIcon from '../components/action-menu/icon--sprite.svg';
@@ -47,7 +48,8 @@ class ExtensionLibrary extends React.PureComponent {
         }
     }
     render () {
-        const extensionLibraryThumbnailData = extensionLibraryContent.map(extension => ({
+        // CodKid: list only the extensions that the open lesson shows
+        const extensionLibraryThumbnailData = filterExtensionLibrary(extensionLibraryContent).map(extension => ({
             rawURL: extension.iconURL || extensionIcon,
             ...extension
         }));
