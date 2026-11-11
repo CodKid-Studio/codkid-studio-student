@@ -21,6 +21,7 @@ import defineDynamicBlock from '../lib/define-dynamic-block';
 // CodKid: per-lesson block visibility (Variables / My Blocks filter, refresh on config change)
 import {getBlockVisibility, subscribeBlockVisibility} from '../codkid/block-visibility/config-store';
 import {installDynamicCategoryFilter} from '../codkid/block-visibility/dynamic-categories';
+import installTeacherBlocksSpike from '../codkid/teacher-blocks-spike/dev-tools'; // CodKid: spike (throwaway)
 import {DEFAULT_THEME, getColorsForTheme, themeMap} from '../lib/themes';
 import {injectExtensionBlockTheme, injectExtensionCategoryTheme} from '../lib/themes/blockHelpers';
 
@@ -296,6 +297,8 @@ class Blocks extends React.Component {
         this.props.vm.addListener('BLOCKSINFO_UPDATE', this.handleBlocksInfoUpdate);
         this.props.vm.addListener('PERIPHERAL_CONNECTED', this.handleStatusButtonUpdate);
         this.props.vm.addListener('PERIPHERAL_DISCONNECTED', this.handleStatusButtonUpdate);
+        // CodKid: spike (throwaway) — window.codkidSpike for the teacher block load-order check
+        installTeacherBlocksSpike(this.props.vm, this.ScratchBlocks);
     }
     detachVM () {
         this.props.vm.removeListener('SCRIPT_GLOW_ON', this.onScriptGlowOn);
