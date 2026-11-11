@@ -1,3 +1,7 @@
+// CodKid: dev-only block visibility config from the URL. Must be the first import, so the config is
+// set before reducers/toolbox.js builds the initial toolbox.
+import '../codkid/block-visibility/auto-load-from-url';
+import '../codkid/teacher-blocks/auto-load-from-url'; // CodKid: dev-only sample teacher blocks from the URL
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {compose} from 'redux';

@@ -18,6 +18,10 @@ import {BLOCKS_DEFAULT_SCALE, STAGE_DISPLAY_SIZES} from '../lib/layout-constants
 import DropAreaHOC from '../lib/drop-area-hoc.jsx';
 import DragConstants from '../lib/drag-constants';
 import defineDynamicBlock from '../lib/define-dynamic-block';
+// CodKid: per-lesson block visibility (Variables / My Blocks filter, refresh on config change)
+import {getBlockVisibility, subscribeBlockVisibility} from '../codkid/block-visibility/config-store';
+import {installDynamicCategoryFilter} from '../codkid/block-visibility/dynamic-categories';
+import {connectTeacherBlocksToVM} from '../codkid/teacher-blocks/connect-vm'; // CodKid: teacher blocks
 import {DEFAULT_THEME, getColorsForTheme, themeMap} from '../lib/themes';
 import {injectExtensionBlockTheme, injectExtensionCategoryTheme} from '../lib/themes/blockHelpers';
 
@@ -57,6 +61,7 @@ class Blocks extends React.Component {
             'detachVM',
             'getToolboxXML',
             'handleCategorySelected',
+            'handleCodkidVisibilityChange', // CodKid: block visibility
             'handleConnectionModalStart',
             'handleDrop',
             'handleStatusButtonUpdate',
@@ -105,6 +110,12 @@ class Blocks extends React.Component {
             {rtl: this.props.isRtl, toolbox: this.props.toolboxXML, colours: getColorsForTheme(this.props.theme)}
         );
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
+
+        // CodKid: filter Variables / My Blocks and follow lesson config changes. If a config was set
+        // before mount, refresh now (this also re-runs the dynamic categories through the filter).
+        this.uninstallCodkidDynamicFilter = installDynamicCategoryFilter(this.workspace);
+        this.unsubscribeCodkidVisibility = subscribeBlockVisibility(this.handleCodkidVisibilityChange);
+        if (getBlockVisibility()) this.handleCodkidVisibilityChange();
 
         // Register buttons under new callback keys for creating variables,
         // lists, and procedures from extensions.
@@ -197,11 +208,21 @@ class Blocks extends React.Component {
     }
     componentWillUnmount () {
         this.detachVM();
+        this.unsubscribeCodkidVisibility(); // CodKid: block visibility
+        this.uninstallCodkidDynamicFilter(); // CodKid: block visibility
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
 
         // Clear the flyout blocks so that they can be recreated on mount.
         this.props.vm.clearFlyoutBlocks();
+    }
+    // CodKid: rebuild the toolbox (which applies the block visibility filter) when the config changes.
+    // Before the first project load there is no stage, so use the initial-setup toolbox.
+    handleCodkidVisibilityChange () {
+        const toolboxXML = this.props.vm.runtime.getTargetForStage() ?
+            this.getToolboxXML() :
+            makeToolboxXML(true, true, null, [], '', '', '', getColorsForTheme(this.props.theme));
+        if (toolboxXML) this.props.updateToolboxState(toolboxXML);
     }
     requestToolboxUpdate () {
         clearTimeout(this.toolboxUpdateTimeout);
@@ -272,6 +293,8 @@ class Blocks extends React.Component {
         this.props.vm.addListener('workspaceUpdate', this.onWorkspaceUpdate);
         this.props.vm.addListener('targetsUpdate', this.onTargetsUpdate);
         this.props.vm.addListener('MONITORS_UPDATE', this.handleMonitorsUpdate);
+        // CodKid: send the lesson's teacher block definitions to the VM
+        this.disconnectCodkidTeacherBlocks = connectTeacherBlocksToVM(this.props.vm);
         this.props.vm.addListener('EXTENSION_ADDED', this.handleExtensionAdded);
         this.props.vm.addListener('BLOCKSINFO_UPDATE', this.handleBlocksInfoUpdate);
         this.props.vm.addListener('PERIPHERAL_CONNECTED', this.handleStatusButtonUpdate);
@@ -290,6 +313,7 @@ class Blocks extends React.Component {
         this.props.vm.removeListener('BLOCKSINFO_UPDATE', this.handleBlocksInfoUpdate);
         this.props.vm.removeListener('PERIPHERAL_CONNECTED', this.handleStatusButtonUpdate);
         this.props.vm.removeListener('PERIPHERAL_DISCONNECTED', this.handleStatusButtonUpdate);
+        if (this.disconnectCodkidTeacherBlocks) this.disconnectCodkidTeacherBlocks(); // CodKid: teacher blocks
     }
 
     updateToolboxBlockValue (id, value) {

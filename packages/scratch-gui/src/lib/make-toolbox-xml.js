@@ -1,5 +1,7 @@
 import ScratchBlocks from 'scratch-blocks';
 import {defaultColors} from './themes';
+// CodKid: per-lesson block visibility filter
+import {applyBlockVisibility} from '../codkid/block-visibility/filter-toolbox-xml';
 
 const categorySeparator = '<sep gap="36"/>';
 
@@ -805,7 +807,8 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
     }
 
     everything.push(xmlClose);
-    return everything.join('\n');
+    // CodKid: hide categories / blocks that the open lesson does not use
+    return applyBlockVisibility(everything.join('\n'));
 };
 
 export default makeToolboxXML;

@@ -9,6 +9,7 @@ const BlocksRuntimeCache = require('./blocks-runtime-cache');
 const log = require('../util/log');
 const Variable = require('./variable');
 const getMonitorIdForBlockWithArgs = require('../util/get-monitor-id');
+const {isHiddenDefinitionScript} = require('../codkid/teacher-blocks/hidden'); // CodKid: teacher blocks
 
 /**
  * @fileoverview
@@ -1059,7 +1060,11 @@ class Blocks {
      * @return {string} String of XML representing this object's blocks.
      */
     toXML (comments) {
-        return this._scripts.map(script => this.blockToXML(script, comments)).join();
+        return this._scripts
+            // CodKid: hidden teacher block definitions never go to the workspace
+            .filter(script => !isHiddenDefinitionScript(this, script))
+            .map(script => this.blockToXML(script, comments))
+            .join();
     }
 
     /**
