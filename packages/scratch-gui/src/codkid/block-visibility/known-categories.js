@@ -35,7 +35,8 @@ const EXTENSION_CATEGORY_IDS = [
 ];
 
 /**
- * Reserved for S-03 (teacher blocks). Always shown, whatever the config says.
+ * S-03 teacher blocks. Always shown, whatever the config says. Its blocks can be chosen with
+ * `onlyBlocks` / `hideBlocks`, by teacher block id (e.g. "walk").
  */
 const LESSON_CATEGORY_ID = 'lesson';
 
@@ -45,7 +46,10 @@ const LESSON_CATEGORY_ID = 'lesson';
 const CATEGORY_ID_ALIASES = {
     event: 'events',
     data: 'variables',
-    procedures: 'myBlocks'
+    procedures: 'myBlocks',
+    // The Lesson extension's id (scratch-vm/src/codkid/teacher-blocks/opcode.js), which the
+    // toolbox uses as its category id.
+    codkidLesson: LESSON_CATEGORY_ID
 };
 
 /**

@@ -15,6 +15,14 @@ const penCategory = {
         '<button text="Help" callbackKey="PEN_HELP"></button></category>'
 };
 
+// The Lesson extension's category, with three teacher blocks.
+const lessonCategory = {
+    id: 'codkidLesson',
+    xml: '<category name="Lesson" id="codkidLesson" colour="#1E8CAE" secondaryColour="#1A7B99">' +
+        '<block type="codkidLesson_crabbySays_v1"></block><block type="codkidLesson_walk_v2"></block>' +
+        '<block type="codkidLesson_addScore_v1"></block></category>'
+};
+
 const spriteToolbox = () => makeToolboxXML(false, false, 'sprite1', [penCategory], 'costume1', 'backdrop1', 'pop');
 const stageToolbox = () => makeToolboxXML(false, true, 'stage', [penCategory], 'costume1', 'backdrop1', 'pop');
 
@@ -156,6 +164,23 @@ describe('CodKid block visibility: toolbox XML filter', () => {
         const second = spriteToolbox();
         expect(first).not.toBe(second);
         expect(summarise(second).root.getAttribute('codkid-rev')).toMatch(/^\d+$/);
+    });
+
+    test('lesson: only the chosen teacher blocks; the category stays even when others are hidden', () => {
+        const rules = normalizeConfig({schemaVersion: 1, defaultCategory: 'hide', categories: {
+            events: {},
+            lesson: {onlyBlocks: ['walk', 'addScore']}
+        }});
+        const xml = makeToolboxXML(false, false, 'sprite1', [penCategory, lessonCategory], 'costume1', 'backdrop1', 'pop');
+        const {ids, categories} = summarise(filterToolboxXML(xml, rules, 1));
+        expect(ids).toEqual(['events', 'codkidLesson']);
+        expect(blocksOf(categories.codkidLesson)).toEqual(['codkidLesson_walk_v2', 'codkidLesson_addScore_v1']);
+    });
+
+    test('lesson: with no lesson rule, every teacher block is shown', () => {
+        const xml = makeToolboxXML(false, false, 'sprite1', [lessonCategory], 'costume1', 'backdrop1', 'pop');
+        const {categories} = summarise(filterToolboxXML(xml, normalizeConfig(sampleA), 1));
+        expect(blocksOf(categories.codkidLesson)).toHaveLength(3);
     });
 
     test('malformed XML is returned unchanged', () => {

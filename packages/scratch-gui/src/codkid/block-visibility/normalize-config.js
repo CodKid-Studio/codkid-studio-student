@@ -1,4 +1,5 @@
 import log from '../../lib/log';
+import {teacherBlockIdOf} from '../teacher-blocks/opcode';
 import {
     CORE_CATEGORY_IDS,
     DYNAMIC_CATEGORY_BUTTONS,
@@ -61,11 +62,42 @@ const normalizeCategory = (id, entry) => {
 };
 
 /**
+ * The Lesson category (teacher blocks) is always shown. Only its blocks can be chosen, by teacher
+ * block id without the version (e.g. "walk"), so a config keeps working when a teacher block gets
+ * a new version.
+ * @param {*} entry - the config entry for "lesson".
+ * @returns {CategoryRule} the rule.
+ */
+const normalizeLessonCategory = entry => {
+    const id = LESSON_CATEGORY_ID;
+    if (!isPlainObject(entry)) invalid(`category "${id}" must be an object`);
+    ['show', 'hideButtons'].forEach(key => {
+        if (hasOwn(entry, key)) {
+            log.warn(`CodKid block visibility: ignoring "${key}" in category "${id}"; it is always shown`);
+        }
+    });
+    ['onlyBlocks', 'hideBlocks'].forEach(key => {
+        if (hasOwn(entry, key) && !isStringArray(entry[key])) {
+            invalid(`category "${id}": "${key}" must be a list of teacher block ids`);
+        }
+    });
+    return {
+        show: true,
+        onlyBlocks: entry.onlyBlocks ? new Set(entry.onlyBlocks) : null,
+        hideBlocks: new Set(entry.hideBlocks || []),
+        hideButtons: new Set(),
+        blockKey: blockType => teacherBlockIdOf(blockType) || blockType
+    };
+};
+
+/**
  * @typedef {object} CategoryRule
  * @property {boolean} show - whether the category is shown.
  * @property {?Set.<string>} onlyBlocks - if set, only these block types are shown (wins over hideBlocks).
  * @property {Set.<string>} hideBlocks - block types to hide.
  * @property {Set.<string>} hideButtons - flyout button callback keys to hide (dynamic categories only).
+ * @property {function(string): string=} blockKey - turns a block type into the name the config
+ *   uses (Lesson category only: the teacher block id).
  */
 
 /**
@@ -105,14 +137,12 @@ const normalizeConfig = json => {
                 log.warn(`CodKid block visibility: ignoring unknown category "${rawId}"`);
                 return;
             }
-            if (id === LESSON_CATEGORY_ID) {
-                log.warn(`CodKid block visibility: category "${LESSON_CATEGORY_ID}" is always shown`);
-                return;
-            }
             if (hasOwn(categories, id)) {
                 log.warn(`CodKid block visibility: category "${rawId}" is listed twice; using the last one`);
             }
-            categories[id] = normalizeCategory(id, rawCategories[rawId]);
+            categories[id] = id === LESSON_CATEGORY_ID ?
+                normalizeLessonCategory(rawCategories[rawId]) :
+                normalizeCategory(id, rawCategories[rawId]);
         });
 
         const rules = {
@@ -125,7 +155,8 @@ const normalizeConfig = json => {
         const anyCoreVisible = CORE_CATEGORY_IDS.some(id => (
             hasOwn(categories, id) ? categories[id].show : rules.defaultShow
         ));
-        const anyListedVisible = Object.keys(categories).some(id => categories[id].show);
+        // The Lesson category alone is not enough: teacher blocks need a hat block to run.
+        const anyListedVisible = Object.keys(categories).some(id => id !== LESSON_CATEGORY_ID && categories[id].show);
         if (!anyCoreVisible && !anyListedVisible) invalid('every category is hidden');
 
         return rules;
@@ -162,13 +193,14 @@ const getCategoryRule = (rules, categoryId) => {
 
 /**
  * @param {?CategoryRule} categoryRule - the rule for the block's category, or null when it is not listed.
- * @param {string} blockType - the block opcode, e.g. "motion_movesteps".
+ * @param {string} blockType - the block opcode, e.g. "motion_movesteps" or "codkidLesson_walk_v1".
  * @returns {boolean} whether the block is shown in the palette.
  */
 const isBlockVisible = (categoryRule, blockType) => {
     if (!categoryRule) return true;
-    if (categoryRule.onlyBlocks) return categoryRule.onlyBlocks.has(blockType);
-    return !categoryRule.hideBlocks.has(blockType);
+    const key = categoryRule.blockKey ? categoryRule.blockKey(blockType) : blockType;
+    if (categoryRule.onlyBlocks) return categoryRule.onlyBlocks.has(key);
+    return !categoryRule.hideBlocks.has(key);
 };
 
 export {

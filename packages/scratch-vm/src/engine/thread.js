@@ -1,3 +1,5 @@
+const {isTeacherOpcode} = require('../codkid/teacher-blocks/opcode'); // CodKid: teacher blocks
+
 /**
  * Recycle bin for empty stackFrame objects
  * @type Array<_StackFrame>
@@ -274,7 +276,8 @@ class Thread {
         let blockID = this.peekStack();
         while (blockID !== null) {
             const block = this.target.blocks.getBlock(blockID);
-            if (typeof block !== 'undefined' && block.opcode === 'procedures_call') {
+            // CodKid: a teacher block call runs a hidden procedure, so it stops here like procedures_call
+            if (typeof block !== 'undefined' && (block.opcode === 'procedures_call' || isTeacherOpcode(block.opcode))) {
                 break;
             }
             this.popStack();

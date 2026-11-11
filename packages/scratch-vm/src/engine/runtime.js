@@ -17,6 +17,7 @@ const maybeFormatMessage = require('../util/maybe-format-message');
 const StageLayering = require('./stage-layering');
 const Variable = require('./variable');
 const xmlEscape = require('../util/xml-escape');
+const {isHiddenDefinitionScript} = require('../codkid/teacher-blocks/hidden'); // CodKid: teacher blocks
 const ScratchLinkWebSocket = require('../util/scratch-link-websocket');
 const fetchWithTimeout = require('../util/fetch-with-timeout');
 
@@ -2227,6 +2228,8 @@ class Runtime extends EventEmitter {
                 const blockForThread = thread.blockGlowInFrame;
                 if (thread.requestScriptGlowInFrame || thread.stackClick) {
                     let script = target.blocks.getTopLevelScript(blockForThread);
+                    // CodKid: a hidden teacher block definition is not on the workspace: glow its caller's script
+                    if (script && isHiddenDefinitionScript(target.blocks, script)) script = thread.topBlock;
                     if (!script) {
                         // Attempt to find in flyout blocks.
                         script = this.flyoutBlocks.getTopLevelScript(

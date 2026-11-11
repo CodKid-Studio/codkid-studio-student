@@ -83,6 +83,34 @@ describe('CodKid block visibility: normalizeConfig', () => {
         expect(warn).toHaveBeenCalled();
     });
 
+    test('the Lesson extension\'s category id (codkidLesson) is the lesson category', () => {
+        const rules = normalizeConfig({schemaVersion: 1, defaultCategory: 'hide', categories: {motion: {}}});
+        expect(isCategoryVisible(rules, 'codkidLesson')).toBe(true);
+        expect(isCategoryVisible(rules, 'pen')).toBe(false);
+    });
+
+    test('lesson blocks are chosen by teacher block id, whatever the version', () => {
+        const only = normalizeConfig({schemaVersion: 1, categories: {lesson: {onlyBlocks: ['walk', 'addScore']}}});
+        const rule = getCategoryRule(only, 'codkidLesson');
+        expect(isBlockVisible(rule, 'codkidLesson_walk_v1')).toBe(true);
+        expect(isBlockVisible(rule, 'codkidLesson_walk_v12')).toBe(true);
+        expect(isBlockVisible(rule, 'codkidLesson_addScore_v2')).toBe(true);
+        expect(isBlockVisible(rule, 'codkidLesson_crabbySays_v1')).toBe(false);
+
+        const hide = normalizeConfig({schemaVersion: 1, categories: {lesson: {hideBlocks: ['walk']}}});
+        expect(isBlockVisible(getCategoryRule(hide, 'codkidLesson'), 'codkidLesson_walk_v2')).toBe(false);
+        expect(isBlockVisible(getCategoryRule(hide, 'codkidLesson'), 'codkidLesson_jump_v1')).toBe(true);
+        expect(warn).not.toHaveBeenCalled();
+    });
+
+    test('lesson: a bad block list makes the config invalid', () => {
+        expect(normalizeConfig({schemaVersion: 1, categories: {lesson: {onlyBlocks: 'walk'}}})).toBeNull();
+    });
+
+    test('showing only the lesson category is not enough (teacher blocks need a hat block)', () => {
+        expect(normalizeConfig({schemaVersion: 1, defaultCategory: 'hide', categories: {lesson: {}}})).toBeNull();
+    });
+
     test('unknown categories and buttons are ignored with a warning', () => {
         const rules = normalizeConfig({schemaVersion: 1, categories: {
             notACategory: {show: false},

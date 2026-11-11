@@ -21,6 +21,7 @@ import defineDynamicBlock from '../lib/define-dynamic-block';
 // CodKid: per-lesson block visibility (Variables / My Blocks filter, refresh on config change)
 import {getBlockVisibility, subscribeBlockVisibility} from '../codkid/block-visibility/config-store';
 import {installDynamicCategoryFilter} from '../codkid/block-visibility/dynamic-categories';
+import {connectTeacherBlocksToVM} from '../codkid/teacher-blocks/connect-vm'; // CodKid: teacher blocks
 import {DEFAULT_THEME, getColorsForTheme, themeMap} from '../lib/themes';
 import {injectExtensionBlockTheme, injectExtensionCategoryTheme} from '../lib/themes/blockHelpers';
 
@@ -292,6 +293,8 @@ class Blocks extends React.Component {
         this.props.vm.addListener('workspaceUpdate', this.onWorkspaceUpdate);
         this.props.vm.addListener('targetsUpdate', this.onTargetsUpdate);
         this.props.vm.addListener('MONITORS_UPDATE', this.handleMonitorsUpdate);
+        // CodKid: send the lesson's teacher block definitions to the VM
+        this.disconnectCodkidTeacherBlocks = connectTeacherBlocksToVM(this.props.vm);
         this.props.vm.addListener('EXTENSION_ADDED', this.handleExtensionAdded);
         this.props.vm.addListener('BLOCKSINFO_UPDATE', this.handleBlocksInfoUpdate);
         this.props.vm.addListener('PERIPHERAL_CONNECTED', this.handleStatusButtonUpdate);
@@ -310,6 +313,7 @@ class Blocks extends React.Component {
         this.props.vm.removeListener('BLOCKSINFO_UPDATE', this.handleBlocksInfoUpdate);
         this.props.vm.removeListener('PERIPHERAL_CONNECTED', this.handleStatusButtonUpdate);
         this.props.vm.removeListener('PERIPHERAL_DISCONNECTED', this.handleStatusButtonUpdate);
+        if (this.disconnectCodkidTeacherBlocks) this.disconnectCodkidTeacherBlocks(); // CodKid: teacher blocks
     }
 
     updateToolboxBlockValue (id, value) {
