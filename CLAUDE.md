@@ -26,12 +26,14 @@ npm run build                 # production build of all 4 packages in dependency
 ### Run the app (dev server: http://localhost:8601, override with `PORT`)
 
 ```sh
-# Once after install, and again after changing these packages:
-npm run build -w @scratch/scratch-svg-renderer
-npm run build -w @scratch/scratch-render
-npm run build -w @scratch/scratch-vm
-npm start -w @scratch/scratch-gui
+nvm use               # switch to the Node version in .nvmrc
+npm run build:deps    # once after install, and again after changing svg-renderer, render or vm
+npm start             # = npm start -w @scratch/scratch-gui
 ```
+
+`build:deps` runs `npm run build -w` for `@scratch/scratch-svg-renderer`, `@scratch/scratch-render`
+and `@scratch/scratch-vm`, in that order. Both `build:deps` and `start` are CodKid additions to
+the root package.json.
 
 Why the deps must be built: scratch-gui's TypeScript (`module: commonjs`) resolves
 `@scratch/scratch-vm` etc. through package.json `main` → `dist/node/…`. Without `dist/` you get
