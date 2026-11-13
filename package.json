@@ -16,7 +16,9 @@
     "prepare": "husky install",
     "build": "cross-env NODE_ENV=production npm run --workspaces build",
     "clean": "npm run --workspaces clean",
-    "version": "cross-env-shell ./scripts/npm-version.sh"
+    "version": "cross-env-shell ./scripts/npm-version.sh",
+    "build:deps": "npm run build -w @scratch/scratch-svg-renderer && npm run build -w @scratch/scratch-render && npm run build -w @scratch/scratch-vm",
+    "start": "npm start -w @scratch/scratch-gui"
   },
   "config": {
     "commitizen": {
