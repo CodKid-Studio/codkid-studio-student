@@ -3,16 +3,25 @@
     "allow": [
       "Bash(npm run:*)",
       "Bash(npm test:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npx jest:*)",
+      "Bash(curl -s http://localhost:*)",
       "Bash(git status)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(git switch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [
       "Read(./.env)",
-      "Read(./.env.*)",
+      "Read(./.env.production)",
       "Bash(git push:*)",
-      "Bash(rm -rf:*)"
+      "Bash(rm -rf:*)",
+      "Bash(git add -f:*)"
     ]
   }
 }

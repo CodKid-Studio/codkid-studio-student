@@ -1,0 +1,294 @@
+openapi: 3.1.0
+info:
+  title: CodKid Studio — Student API
+  version: 1.0.0
+  description: |
+    The only interface between the student app (AGPL, separate repository) and the platform.
+    The student app must not import code from the platform; it uses these HTTP endpoints only.
+
+    Login flow (S-01): pick the class (by school code) → tap your name → tap 3 pictures.
+    Then the app loads the lesson bundle and auto-saves (S-07).
+
+    Errors always look like `{ "error": { "code": "...", "message": "...", "details": ... } }`.
+    `message` is short English for the child or teacher; `code` is stable for the app to switch on.
+
+    Picture ids (16): cat, dog, fish, bird, rabbit, frog, apple, banana, star, moon, sun, tree,
+    flower, car, rocket, ball. The student app keeps its own images keyed by these ids.
+
+    Login card QR codes open the student app with `?tenant=<code>&class=<classId>&student=<studentId>`.
+    The child still taps 3 pictures.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+components:
+  securitySchemes:
+    studentToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Session token from `POST /student/login` (HS256, 4 hours by default).
+        It stops working when the teacher re-issues the student's picture key.
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              examples:
+                [
+                  not_found,
+                  unauthorized,
+                  wrong_pictures,
+                  locked,
+                  no_lesson,
+                  validation_failed,
+                  rate_limited,
+                ]
+            message: { type: string }
+            details: {}
+    PictureId:
+      type: string
+      enum:
+        [
+          cat,
+          dog,
+          fish,
+          bird,
+          rabbit,
+          frog,
+          apple,
+          banana,
+          star,
+          moon,
+          sun,
+          tree,
+          flower,
+          car,
+          rocket,
+          ball,
+        ]
+    DisplayColor:
+      type: string
+      pattern: '^#[0-9a-f]{6}$'
+    Step:
+      type: object
+      required: [text, hints]
+      properties:
+        text: { type: string }
+        hints: { type: array, items: { type: string }, maxItems: 5 }
+    TeacherBlocks:
+      type: object
+      description: Teacher block definitions, exactly as in `teacher-block-schema.md` (schemaVersion 1).
+      required: [schemaVersion, definitions]
+      properties:
+        schemaVersion: { const: 1 }
+        definitions: { type: array, items: { type: object } }
+    BlockVisibility:
+      type: [object, 'null']
+      description: |
+        Block visibility config (schemaVersion 1), as read by the student app's block-visibility
+        normalizer. `null` means the default palette.
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+paths:
+  /student/tenants/{code}/classes:
+    get:
+      summary: Login step 1 — classes of a school
+      description: Public. Rate-limited per IP (60 per minute).
+      parameters:
+        - {
+            name: code,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: '^[a-z0-9][a-z0-9-]{1,31}$' },
+          }
+      responses:
+        '200':
+          description: Classes, by name
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [classes]
+                properties:
+                  classes:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name]
+                      properties:
+                        id: { type: string, format: uuid }
+                        name: { type: string }
+        '404': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+  /student/classes/{classId}/students:
+    get:
+      summary: Login step 2 — first names and colours of a class
+      description: Public. Rate-limited per IP (60 per minute). No other student data is returned.
+      parameters:
+        - { name: classId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Students, by first name
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [students]
+                properties:
+                  students:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, firstName, displayColor]
+                      properties:
+                        id: { type: string, format: uuid }
+                        firstName: { type: string }
+                        displayColor: { $ref: '#/components/schemas/DisplayColor' }
+        '404': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+  /student/login:
+    post:
+      summary: Login step 3 — 3 pictures
+      description: |
+        The pictures must be the student's 3 pictures in the right order.
+        After 5 wrong tries the student is locked for 15 minutes (423), even with the right pictures,
+        until the teacher re-issues the key. Rate-limited per IP (30 per minute).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [classId, studentId, pictures]
+              additionalProperties: false
+              properties:
+                classId: { type: string, format: uuid }
+                studentId: { type: string, format: uuid }
+                pictures:
+                  type: array
+                  minItems: 3
+                  maxItems: 3
+                  items: { $ref: '#/components/schemas/PictureId' }
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expiresAt, student]
+                properties:
+                  token: { type: string }
+                  expiresAt: { type: string, format: date-time }
+                  student:
+                    type: object
+                    required: [id, firstName, displayColor]
+                    properties:
+                      id: { type: string, format: uuid }
+                      firstName: { type: string }
+                      displayColor: { $ref: '#/components/schemas/DisplayColor' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401':
+          description: '`wrong_pictures` (also for an unknown student or class)'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '423':
+          description: '`locked` — too many wrong tries; ask the teacher'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+  /student/lesson:
+    get:
+      summary: Lesson bundle — the material started in the student's class
+      security: [{ studentToken: [] }]
+      responses:
+        '200':
+          description: Everything needed to open the lesson
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [material, teacherBlocks, blockVisibility, starterUrl, latestSave]
+                properties:
+                  material:
+                    type: object
+                    required: [id, title, steps]
+                    properties:
+                      id: { type: string, format: uuid }
+                      title: { type: string }
+                      steps: { type: array, items: { $ref: '#/components/schemas/Step' } }
+                  teacherBlocks: { $ref: '#/components/schemas/TeacherBlocks' }
+                  blockVisibility: { $ref: '#/components/schemas/BlockVisibility' }
+                  starterUrl:
+                    type: string
+                    format: uri
+                    description: Signed URL of the starter `.sb3`, valid for 10 minutes.
+                  latestSave:
+                    description: The student's latest save of this material (signed URL, 10 minutes), or null.
+                    oneOf:
+                      - type: 'null'
+                      - type: object
+                        required: [url, savedAt]
+                        properties:
+                          url: { type: string, format: uri }
+                          savedAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '404':
+          description: '`no_lesson` — the teacher has not started a lesson in this class'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /student/projects/current:
+    put:
+      summary: Auto-save the current project (S-07)
+      description: |
+        Saves the project of the lesson started in the student's class as a new auto-save entry.
+        The latest 50 auto-save entries are kept. Rate-limited per IP (120 per minute).
+      security: [{ studentToken: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [project]
+              properties:
+                project:
+                  type: string
+                  format: binary
+                  description: The `.sb3` file (max 50 MB).
+                thumbnail:
+                  type: string
+                  format: binary
+                  description: PNG thumbnail (optional).
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [saveId, savedAt]
+                properties:
+                  saveId: { type: string, format: uuid }
+                  savedAt: { type: string, format: date-time }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404':
+          description: '`no_lesson`'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
